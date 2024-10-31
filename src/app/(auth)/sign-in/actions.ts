@@ -39,7 +39,7 @@ export const login = async (values: z.infer<typeof LoginSchema>) => {
   const session = await createSession(sessionToken, user.id);
   setSessionTokenCookie(sessionToken, session.expiresAt);
 
-  return redirect('/');
+  return redirect('/attendence');
 };
 
 interface ActionResult {

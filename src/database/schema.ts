@@ -92,3 +92,6 @@ export const attendenceRelations = relations(attendences, ({ one }) => ({
 
 export type User = InferSelectModel<typeof users>;
 export type Session = InferSelectModel<typeof sessions>;
+export type Attendence = InferSelectModel<typeof attendences>;
+export type Profile = InferSelectModel<typeof profiles>;
+export type Department = InferSelectModel<typeof departments>;
