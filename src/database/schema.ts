@@ -6,6 +6,8 @@ import {
   pgEnum,
   varchar,
   time,
+  primaryKey,
+  index,
 } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['admin', 'employee']);
@@ -23,7 +25,8 @@ export const users = pgTable('users', {
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(profiles),
-  attendences: many(attendences),
+  attendances: many(attendances),
+  photos: many(photos),
 }));
 
 export const profiles = pgTable('profiles', {
@@ -64,34 +67,100 @@ export const departments = pgTable('departments', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   description: text('description'),
-  createdAt: timestamp('created_at', { mode: 'date' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull(),
 });
 
 export const departmentRelations = relations(departments, ({ many }) => ({
   profiles: many(profiles),
 }));
 
-export const attendences = pgTable('attendences', {
-  id: text('id').primaryKey(),
-  userId: text('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  date: timestamp('date', { mode: 'date', withTimezone: true }),
-  checkInTime: time(),
-  checkOutTime: time(),
-  status: varchar('status').notNull(),
-  notes: text('notes'),
-});
+export const statusEnum = pgEnum('status', [
+  'present',
+  'absent',
+  'late',
+  'on_leave',
+]);
 
-export const attendenceRelations = relations(attendences, ({ one }) => ({
+export const attendances = pgTable(
+  'attendances',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    date: timestamp('date', { mode: 'date', withTimezone: false }).notNull(),
+    checkInTime: time(),
+    checkOutTime: time(),
+    status: statusEnum(),
+    notes: text('notes'),
+  },
+  (table) => ({
+    userId: index().on(table.userId),
+  })
+);
+
+export const attendenceRelations = relations(attendances, ({ one, many }) => ({
   user: one(users, {
-    fields: [attendences.userId],
+    fields: [attendances.userId],
     references: [users.id],
   }),
+  photos: many(photos),
 }));
+
+export const photos = pgTable(
+  'photos',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'set null' }),
+    photoUrl: text('photo_url').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull(),
+  },
+  (table) => ({
+    userId: index().on(table.userId),
+  })
+);
+
+export const photoRelations = relations(photos, ({ many, one }) => ({
+  user: one(users, {
+    fields: [photos.userId],
+    references: [users.id],
+  }),
+  attendances: many(attendances),
+}));
+
+export const photosToAttendances = pgTable(
+  'photos_to_attendances',
+  {
+    attendanceId: text('attendance_id')
+      .notNull()
+      .references(() => attendances.id),
+    photoId: text('photo_id')
+      .notNull()
+      .references(() => photos.id),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.attendanceId, t.photoId] }),
+  })
+);
+
+export const photosToAttendancesRelations = relations(
+  photosToAttendances,
+  ({ one }) => ({
+    attendance: one(attendances, {
+      fields: [photosToAttendances.attendanceId],
+      references: [attendances.id],
+    }),
+    photo: one(photos, {
+      fields: [photosToAttendances.photoId],
+      references: [photos.id],
+    }),
+  })
+);
 
 export type User = InferSelectModel<typeof users>;
 export type Session = InferSelectModel<typeof sessions>;
-export type Attendence = InferSelectModel<typeof attendences>;
+export type Attendance = InferSelectModel<typeof attendances>;
 export type Profile = InferSelectModel<typeof profiles>;
 export type Department = InferSelectModel<typeof departments>;

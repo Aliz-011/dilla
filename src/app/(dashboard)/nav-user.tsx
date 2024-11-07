@@ -2,14 +2,16 @@
 
 import {
   BadgeCheck,
-  Bell,
   ChevronsUpDown,
-  CreditCard,
   Loader,
   LogOut,
+  Moon,
   Sparkles,
+  Sun,
+  SunMoon,
 } from 'lucide-react';
 import { useFormState } from 'react-dom';
+import Link from 'next/link';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -18,7 +20,11 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -29,7 +35,7 @@ import {
 } from '@/components/ui/sidebar';
 import { logout } from '@/actions/logout';
 import { useSession } from '@/hooks/use-session';
-import Link from 'next/link';
+import { useTheme } from 'next-themes';
 
 export const NavUser = ({
   user,
@@ -40,6 +46,7 @@ export const NavUser = ({
     avatar: string;
   };
 }) => {
+  const { setTheme } = useTheme();
   const { isMobile } = useSidebar();
   const [_, action] = useFormState(logout, { message: '' });
 
@@ -110,6 +117,26 @@ export const NavUser = ({
                   Account
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <button className="flex items-center gap-x-2">
+                    <SunMoon />
+                    Theme
+                  </button>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => setTheme('light')}>
+                      <Sun />
+                      Light
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme('dark')}>
+                      <Moon />
+                      Dark
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="cursor-pointer" asChild>

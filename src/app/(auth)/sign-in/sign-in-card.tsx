@@ -3,8 +3,9 @@
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,12 +20,12 @@ import {
 } from '@/components/ui/form';
 import { LoginSchema } from '@/lib/schemas';
 import { login } from './actions';
-import { toast } from 'sonner';
 
 type FormValues = z.infer<typeof LoginSchema>;
 
 export const SignInCard = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(LoginSchema),
@@ -37,15 +38,17 @@ export const SignInCard = () => {
   const onSubmit = async (values: FormValues) => {
     try {
       setIsLoading(true);
-      const { message } = await login(values);
+      const { error, success, message } = await login(values);
 
-      if (message) {
-        throw new Error(message);
+      if (!success) {
+        throw new Error(error);
       }
 
-      toast.success('Logged in');
+      toast.success(message);
       form.reset();
+      router.replace('/attendance');
     } catch (error: any) {
+      console.log(error);
       toast.error(error.message);
     } finally {
       setIsLoading(false);

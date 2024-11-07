@@ -12,7 +12,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { NavUser } from './nav-user';
@@ -21,7 +20,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { DatePicker } from '@/components/date-picker';
+import { Calendar } from '@/components/ui/calendar';
 
 const data = {
   user: {
@@ -50,11 +49,19 @@ export const DashboardSidebar = async ({
 }: React.ComponentProps<typeof Sidebar>) => {
   return (
     <Sidebar {...props}>
-      <SidebarHeader className="h-16 border-b border-sidebar-border">
+      <SidebarHeader>
         <NavUser user={data.user} />
       </SidebarHeader>
       <SidebarContent>
-        <DatePicker />
+        <SidebarGroup className="px-0">
+          <SidebarGroupContent className="flex flex-col space-y-2">
+            <Calendar
+              disabled
+              className="[&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground"
+              initialFocus
+            />
+          </SidebarGroupContent>
+        </SidebarGroup>
         <SidebarSeparator className="mx-0" />
         <Calendars calendars={data.calendars} />
       </SidebarContent>
@@ -68,7 +75,6 @@ export const DashboardSidebar = async ({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter> */}
-      <SidebarRail />
     </Sidebar>
   );
 };

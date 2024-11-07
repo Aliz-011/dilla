@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentSession } from '@/lib/auth';
 import { CapturePhoto } from './capture-photo';
 
-const AttendencePage = async () => {
+const AttendancePage = async () => {
   const { session } = await getCurrentSession();
 
   if (!session) {
@@ -12,4 +12,4 @@ const AttendencePage = async () => {
 
   return <CapturePhoto />;
 };
-export default AttendencePage;
+export default AttendancePage;

@@ -4,15 +4,26 @@ import { useRef, useState } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
+import { useCreateAttendance } from '@/hooks/attendance/use-create-attendance';
 import { kyInstance } from '@/lib/ky';
+import { Components, GeocodeResponse, UserLocation } from '@/types';
+
+interface ResolvedData {
+  components: Components;
+  formatted: string;
+}
 
 export const CapturePhoto = () => {
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [photo, setPhoto] = useState('');
   const [file, setFile] = useState<File>();
+
+  const router = useRouter();
+  const { mutate, isPending } = useCreateAttendance();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,24 +63,22 @@ export const CapturePhoto = () => {
   };
 
   const fetchLocation = async () => {
-    return new Promise<string>((resolve) => {
+    return new Promise<ResolvedData | null>((resolve) => {
       navigator.geolocation.getCurrentPosition(async (position) => {
-        const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-            `${position.coords.latitude},${position.coords.longitude}`
-          )}&language=en&pretty=1&key=${process.env
-            .NEXT_PUBLIC_OPENCAGE_API_KEY!}`
-        );
+        const response = await kyInstance
+          .get(
+            `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+              `${position.coords.latitude},${position.coords.longitude}`
+            )}&language=en&pretty=1&key=${process.env
+              .NEXT_PUBLIC_OPENCAGE_API_KEY!}`
+          )
+          .json<GeocodeResponse>();
 
-        const json = await response.json();
-        const results = json.results;
-
-        if (results.length > 0) {
-          const address = results[0].formatted;
-          console.log(address); // Debugging output
-          resolve(address);
+        if (response?.results.length > 0) {
+          const { components, formatted } = response.results[0];
+          resolve({ components, formatted });
         } else {
-          resolve('Location not found');
+          resolve(null);
         }
       });
     });
@@ -92,7 +101,7 @@ export const CapturePhoto = () => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         const dateText = `${format(new Date(), 'PPP kk:mm:ss')}`;
-        const textLines = [location, 'Another Line: Example text', dateText];
+        const textLines = [location?.formatted, dateText];
 
         // Font settings
         context.font = '16px Arial';
@@ -105,7 +114,7 @@ export const CapturePhoto = () => {
 
         // Draw each line of text, moving upward for each line
         textLines.forEach((line) => {
-          context.fillText(line, x, y);
+          context.fillText(line!, x, y);
           y -= 20; // Adjust line height (20px gap between lines)
         });
 
@@ -143,27 +152,15 @@ export const CapturePhoto = () => {
     formData.append('file', file, file.name);
 
     try {
-      // const response = await kyInstance
-      //   .post('/api/upload', {
-      //     headers: {
-      //       'Content-Type': 'image/*',
-      //     },
-      //     body: formData,
-      //   })
-      //   .json();
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        console.log('File uploaded successfully:', result);
-      } else {
-        console.error('Upload failed:', result);
-      }
+      mutate(
+        { file: formData, action: 'check-in' },
+        {
+          onSuccess(data) {
+            console.log(data);
+            router.push('/');
+          },
+        }
+      );
     } catch (error) {
       console.error('Error uploading file', error);
       toast.error('Error uploading file.');
@@ -182,11 +179,17 @@ export const CapturePhoto = () => {
             className="w-full"
           />
           <div className="flex items-center gap-x-4 absolute bottom-10 left-1/2 transform -translate-x-1/2">
-            <Button onClick={resetState} variant="secondary">
+            <Button
+              onClick={resetState}
+              variant="secondary"
+              disabled={isPending}
+            >
               Retake
             </Button>
 
-            <Button onClick={uploadFile}>Confirm</Button>
+            <Button onClick={uploadFile} disabled={isPending}>
+              Confirm
+            </Button>
           </div>
         </>
       ) : (
