@@ -7,10 +7,19 @@ import {
   setMinutes,
   startOfToday,
 } from 'date-fns';
+import path from 'path';
+import { writeFile } from 'fs/promises';
+import fs from 'fs';
 
 import { db } from '@/database/drizzle';
 import { getCurrentSession } from '@/lib/auth';
-import { attendances, users } from '@/database/schema';
+import {
+  attendances,
+  photos,
+  photosToAttendances,
+  users,
+} from '@/database/schema';
+import { nanoid } from 'nanoid';
 
 export async function GET(
   req: NextRequest,
@@ -70,11 +79,26 @@ export async function PATCH(
       );
     }
 
+    // Ensure the uploads directory exists
+    const uploadDir = path.join(process.cwd(), 'public/uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    const filePath = path.join(process.cwd(), 'public/uploads', filename);
+
+    await writeFile(filePath, buffer);
+
     const today = format(new Date(), 'yyyy-MM-dd');
+
     const checkOutWindow = {
-      start: setMinutes(setHours(today, 16), 0),
-      end: setMinutes(setHours(today, 17), 0),
+      start: setMinutes(setHours(startOfToday(), 16), 0),
+      end: setMinutes(setHours(startOfToday(), 18), 0),
     };
+    console.log(checkOutWindow.start);
+    console.log(checkOutWindow.end);
 
     if (
       action === 'check-out' &&
@@ -86,15 +110,22 @@ export async function PATCH(
       );
     }
 
-    const [existingAttendance] = await db
-      .select()
-      .from(attendances)
-      .where(
-        and(
-          eq(attendances.userId, user.id),
-          eq(attendances.date, new Date(today))
-        )
-      );
+    const existingAttendance = await db.query.attendances.findFirst({
+      where: and(
+        eq(attendances.id, attendanceId),
+        eq(attendances.date, new Date(today))
+      ),
+      with: {
+        user: {
+          columns: {
+            nrp: true,
+          },
+          with: {
+            profile: true,
+          },
+        },
+      },
+    });
 
     if (!existingAttendance) {
       return NextResponse.json(
@@ -103,13 +134,36 @@ export async function PATCH(
       );
     }
 
-    // await db
-    //     .update(attendances)
-    //     .set({ checkOutTime: format(new Date(), 'HH:mm:ss') })
-    //     .where(and(eq(attendances.id, attendanceId), eq(users.id, )));
-    return NextResponse.json({ message: 'Check-out recorded successfully' });
+    await db
+      .update(attendances)
+      .set({
+        checkOutTime: format(new Date(), 'HH:mm:ss'),
+        status: 'present',
+      })
+      .where(
+        and(
+          eq(attendances.id, existingAttendance.id),
+          eq(attendances.userId, user.id)
+        )
+      );
+
+    const [photo] = await db
+      .insert(photos)
+      .values({
+        id: nanoid(),
+        userId: user.id,
+        photoUrl: filename,
+        createdAt: new Date(),
+      })
+      .returning({ id: photos.id });
+
+    await db.insert(photosToAttendances).values({
+      attendanceId: existingAttendance.id,
+      photoId: photo.id,
+    });
+
+    return NextResponse.json({ data: existingAttendance });
   } catch (error) {
-    console.error(error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }

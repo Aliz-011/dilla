@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
     // 919605900772346873718x127389
     const today = format(new Date(), 'yyyy-MM-dd');
     const checkInWindow = {

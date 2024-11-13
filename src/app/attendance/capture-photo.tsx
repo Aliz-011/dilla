@@ -9,21 +9,36 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useCreateAttendance } from '@/hooks/attendance/use-create-attendance';
 import { kyInstance } from '@/lib/ky';
-import { Components, GeocodeResponse, UserLocation } from '@/types';
+import { Components, GeocodeResponse } from '@/types';
+import { useUpdateAttendance } from '@/hooks/attendance/use-update-attendance';
+import { Attendance } from '@/database/schema';
 
 interface ResolvedData {
   components: Components;
   formatted: string;
 }
 
-export const CapturePhoto = () => {
+interface ICapturePhoto {
+  attendanceId?: string;
+  initialValues?: Attendance;
+}
+
+export const CapturePhoto = ({
+  attendanceId,
+  initialValues,
+}: ICapturePhoto) => {
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  // const [action, setAction] = useState<'check-in' | 'check-out'>('check-in');
+  const [isCapturing, setIsCapturing] = useState(false);
   const [photo, setPhoto] = useState('');
   const [file, setFile] = useState<File>();
 
   const router = useRouter();
-  const { mutate, isPending } = useCreateAttendance();
+  const { mutate: newAttendance, isPending: isAddingAttendance } =
+    useCreateAttendance();
+  const { mutate: updateAttendance, isPending: isUpdatingAttendance } =
+    useUpdateAttendance();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -85,6 +100,9 @@ export const CapturePhoto = () => {
   };
 
   const capturePhoto = async () => {
+    if (isCapturing) return; // Prevent double clicks
+    setIsCapturing(true);
+
     const location = await fetchLocation();
 
     if (videoRef.current && canvasRef.current) {
@@ -101,7 +119,12 @@ export const CapturePhoto = () => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         const dateText = `${format(new Date(), 'PPP kk:mm:ss')}`;
-        const textLines = [location?.formatted, dateText];
+        const textLines = [
+          location?.formatted,
+          dateText,
+          location?.components.city,
+          location?.components.region,
+        ];
 
         // Font settings
         context.font = '16px Arial';
@@ -121,10 +144,13 @@ export const CapturePhoto = () => {
         const imageUrl = canvas.toDataURL();
         setPhoto(imageUrl);
 
-        setTimeout(() => convertBlobUrl(), 0);
+        // setTimeout(() => convertBlobUrl(), 0);
+        await convertBlobUrl();
         stopCamera();
       }
     }
+
+    setIsCapturing(false);
   };
 
   const convertBlobUrl = async () => {
@@ -133,10 +159,10 @@ export const CapturePhoto = () => {
       const newFile = new File([blob], `new_photo-${Date.now()}.png`, {
         type: blob.type,
       });
-      setFile(newFile); // Set the file state
+      setFile(newFile);
 
       const objectUrl = URL.createObjectURL(newFile);
-      setCapturedImage(objectUrl); // Use the created object URL
+      setCapturedImage(objectUrl);
     }
   };
 
@@ -151,16 +177,31 @@ export const CapturePhoto = () => {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
+    const currentHour = new Date().getHours();
+    const action =
+      currentHour >= 7 && currentHour < 10 ? 'check-in' : 'check-out';
+
     try {
-      mutate(
-        { file: formData, action: 'check-in' },
-        {
-          onSuccess(data) {
-            console.log(data);
-            router.push('/');
-          },
-        }
-      );
+      if (initialValues) {
+        updateAttendance(
+          { action, form: formData, params: { attendanceId: attendanceId! } },
+          {
+            onSuccess: () => {
+              router.push('/');
+            },
+          }
+        );
+      } else {
+        newAttendance(
+          { file: formData, action },
+          {
+            onSuccess(data) {
+              console.log(data.message);
+              router.push('/');
+            },
+          }
+        );
+      }
     } catch (error) {
       console.error('Error uploading file', error);
       toast.error('Error uploading file.');
@@ -182,12 +223,15 @@ export const CapturePhoto = () => {
             <Button
               onClick={resetState}
               variant="secondary"
-              disabled={isPending}
+              disabled={isAddingAttendance || isUpdatingAttendance}
             >
               Retake
             </Button>
 
-            <Button onClick={uploadFile} disabled={isPending}>
+            <Button
+              onClick={uploadFile}
+              disabled={isAddingAttendance || isUpdatingAttendance}
+            >
               Confirm
             </Button>
           </div>
@@ -210,9 +254,10 @@ export const CapturePhoto = () => {
           ) : (
             <Button
               onClick={capturePhoto}
+              disabled={isCapturing}
               className="absolute bottom-5 left-1/2 transform -translate-x-1/2 border-none rounded-lg py-[10px] px-5 text-[16px] shadow"
             >
-              Capture Image
+              {isCapturing ? 'Capturing...' : 'Capture Image'}
             </Button>
           )}
         </>
