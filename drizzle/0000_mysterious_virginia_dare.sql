@@ -1,11 +1,12 @@
 CREATE TYPE "public"."role" AS ENUM('admin', 'employee');--> statement-breakpoint
+CREATE TYPE "public"."status" AS ENUM('present', 'absent', 'late', 'on_leave');--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "attendances" (
 	"id" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
 	"date" timestamp NOT NULL,
 	"checkInTime" time,
 	"checkOutTime" time,
-	"status" varchar NOT NULL,
+	"status" "status",
 	"notes" text
 );
 --> statement-breakpoint
@@ -13,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "departments" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"description" text,
-	"created_at" timestamp
+	"created_at" timestamp NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "photos" (
@@ -51,7 +52,7 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"email" varchar NOT NULL,
 	"nrp" varchar NOT NULL,
 	"password" text NOT NULL,
-	"role" "role",
+	"role" "role" DEFAULT 'employee' NOT NULL,
 	"created_at" timestamp,
 	CONSTRAINT "users_email_unique" UNIQUE("email"),
 	CONSTRAINT "users_nrp_unique" UNIQUE("nrp")
@@ -98,3 +99,6 @@ DO $$ BEGIN
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "attendances_user_id_index" ON "attendances" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "photos_user_id_index" ON "photos" USING btree ("user_id");

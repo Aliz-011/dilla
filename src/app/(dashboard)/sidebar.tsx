@@ -21,6 +21,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Calendar } from '@/components/ui/calendar';
+import Link from 'next/link';
 
 const data = {
   user: {
@@ -63,18 +64,19 @@ export const DashboardSidebar = async ({
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarSeparator className="mx-0" />
-        <Calendars calendars={data.calendars} />
       </SidebarContent>
-      {/* <SidebarFooter>
+      <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <Plus />
-              <span>New Calendar</span>
+            <SidebarMenuButton asChild>
+              <Link href="/attendance">
+                <Plus />
+                <span>Add attendance</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarFooter> */}
+      </SidebarFooter>
     </Sidebar>
   );
 };

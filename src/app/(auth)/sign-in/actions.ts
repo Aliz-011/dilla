@@ -3,7 +3,7 @@
 import { z } from 'zod';
 
 import { LoginSchema } from '@/lib/schemas';
-import { getUserByNrp } from '@/lib/auth';
+import { getUserByNrp, getUserHashedPassword } from '@/lib/auth';
 import { verifyPasswordHash } from '@/lib/utils';
 import {
   createSession,
@@ -21,14 +21,18 @@ export const login = async (values: z.infer<typeof LoginSchema>) => {
   const { nrp, password } = validatedFields.data;
 
   const user = await getUserByNrp(nrp);
+  const userPwd = await getUserHashedPassword(user.id);
+  console.log(user);
+  console.log(userPwd);
 
-  if (!user || !user.password) {
+  if (!user || !userPwd) {
     return {
       error: 'Account does not exist',
     };
   }
 
-  const validPassword = await verifyPasswordHash(user.password, password);
+  const validPassword = await verifyPasswordHash(userPwd, password);
+  console.log(validPassword);
 
   if (!validPassword) {
     return { error: 'Invalid NRP or password' };

@@ -85,7 +85,6 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         date: new Date(today),
         checkInTime: format(new Date(), 'HH:mm:ss'),
-        status: 'present',
       })
       .returning({ id: attendances.id });
 

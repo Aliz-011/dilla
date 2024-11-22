@@ -1,7 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { User } from '@/database/schema';
 import { kyInstance } from '@/lib/ky';
+
+type User = {
+  id: string;
+  email: string;
+  nrp: string;
+  role: 'admin' | 'employee';
+  createdAt: Date | null;
+};
 
 export const useSession = () => {
   const { data, isLoading, isError } = useQuery({

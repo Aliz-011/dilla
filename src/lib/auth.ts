@@ -1,11 +1,13 @@
 import { cookies } from 'next/headers';
 import { cache } from 'react';
+import { count, eq } from 'drizzle-orm';
 
 import {
   SessionValidationResult,
   validateSessionToken,
 } from './server/session';
 import { db } from '@/database/drizzle';
+import { users } from '@/database/schema';
 
 export const getCurrentSession = cache(
   async (): Promise<SessionValidationResult> => {
@@ -23,17 +25,41 @@ export const getCurrentSession = cache(
 );
 
 export const getUserByNrp = async (nrp: string) => {
-  const user = await db.query.users.findFirst({
-    where: (users, { eq }) => eq(users.nrp, nrp),
-  });
+  const [data] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      nrp: users.nrp,
+      role: users.role,
+    })
+    .from(users)
+    .where(eq(users.nrp, nrp));
 
-  return user;
+  if (!data) {
+    return null;
+  }
+
+  return data;
+};
+
+export const getUserHashedPassword = async (userId: string) => {
+  const [user] = await db
+    .select({ password: users.password })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  return user.password;
 };
 
 export const checkEmailAvailability = async (email: string) => {
-  const user = await db.query.users.findFirst({
-    where: (users, { eq }) => eq(users.email, email),
-  });
+  const data = await db
+    .select({ count: count(users.email) })
+    .from(users)
+    .where(eq(users.email, email));
 
-  return !!user;
+  if (data[0].count > 0) {
+    throw new Error();
+  }
+
+  return data[0].count === 0;
 };

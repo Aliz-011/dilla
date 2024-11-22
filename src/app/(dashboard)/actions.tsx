@@ -10,9 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useSession } from '@/hooks/use-session';
 
 export const Actions = ({ id }: { id: string }) => {
   const router = useRouter();
+  const { data: user } = useSession();
 
   return (
     <DropdownMenu>
@@ -24,12 +26,14 @@ export const Actions = ({ id }: { id: string }) => {
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => router.push(`/attendance/${id}`)}>
           <Edit className="size-4 mr-2" />
-          Edit
+          Check out
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => {}}>
-          <Trash className="size-4 mr-2" />
-          Delete
-        </DropdownMenuItem>
+        {user?.role === 'admin' ? (
+          <DropdownMenuItem onClick={() => {}}>
+            <Trash className="size-4 mr-2" />
+            Delete
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

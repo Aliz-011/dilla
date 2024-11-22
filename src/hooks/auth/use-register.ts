@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import { RegisterSchema } from '@/lib/schemas';
@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 type RequestType = z.infer<typeof RegisterSchema>;
 
 export const useRegister = () => {
+  const queryClient = useQueryClient();
+
   const mutation = useMutation<any, Error, RequestType>({
     mutationFn: async ({ email, nrp, password }) => {
       const response = await register({ email, nrp, password });
@@ -16,6 +18,7 @@ export const useRegister = () => {
     },
     onSuccess() {
       toast.success('Successfully registered.');
+      queryClient.invalidateQueries({ queryKey: ['current'] });
     },
     onError(error) {
       toast.error(error.message);

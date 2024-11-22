@@ -13,12 +13,7 @@ import fs from 'fs';
 
 import { db } from '@/database/drizzle';
 import { getCurrentSession } from '@/lib/auth';
-import {
-  attendances,
-  photos,
-  photosToAttendances,
-  users,
-} from '@/database/schema';
+import { attendances, photos, photosToAttendances } from '@/database/schema';
 import { nanoid } from 'nanoid';
 
 export async function GET(
@@ -79,26 +74,12 @@ export async function PATCH(
       );
     }
 
-    // Ensure the uploads directory exists
-    const uploadDir = path.join(process.cwd(), 'public/uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-    const filePath = path.join(process.cwd(), 'public/uploads', filename);
-
-    await writeFile(filePath, buffer);
-
     const today = format(new Date(), 'yyyy-MM-dd');
 
     const checkOutWindow = {
       start: setMinutes(setHours(startOfToday(), 16), 0),
       end: setMinutes(setHours(startOfToday(), 18), 0),
     };
-    console.log(checkOutWindow.start);
-    console.log(checkOutWindow.end);
 
     if (
       action === 'check-out' &&
@@ -147,6 +128,18 @@ export async function PATCH(
         )
       );
 
+    // Ensure the uploads directory exists
+    const uploadDir = path.join(process.cwd(), 'public/uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    const filePath = path.join(process.cwd(), 'public/uploads', filename);
+
+    await writeFile(filePath, buffer);
+
     const [photo] = await db
       .insert(photos)
       .values({
@@ -164,6 +157,7 @@ export async function PATCH(
 
     return NextResponse.json({ data: existingAttendance });
   } catch (error) {
+    console.log(error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }

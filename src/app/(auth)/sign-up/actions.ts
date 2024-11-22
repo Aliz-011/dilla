@@ -7,13 +7,12 @@ import { db } from '@/database/drizzle';
 import { checkEmailAvailability, getUserByNrp } from '@/lib/auth';
 import { RegisterSchema } from '@/lib/schemas';
 import { hashPassword, verifyPasswordStrength } from '@/lib/utils';
-import { users } from '@/database/schema';
+import { profiles, users } from '@/database/schema';
 import {
   createSession,
   generateSessionToken,
   setSessionTokenCookie,
 } from '@/lib/server/session';
-import { redirect } from 'next/navigation';
 
 export const register = async (values: z.infer<typeof RegisterSchema>) => {
   const validatedFields = RegisterSchema.safeParse(values);
@@ -27,6 +26,7 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
   const { email, nrp, password } = validatedFields.data;
 
   const strongPassword = await verifyPasswordStrength(password);
+  console.log(strongPassword);
 
   if (!strongPassword) {
     return {
@@ -34,9 +34,9 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
     };
   }
 
-  const existingEmail = await checkEmailAvailability(email);
+  const emailAvailable = await checkEmailAvailability(email);
 
-  if (existingEmail) {
+  if (!emailAvailable) {
     return {
       message: 'Email already taken',
     };
@@ -44,13 +44,15 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
 
   const existingNrp = await getUserByNrp(nrp);
 
-  if (!!existingNrp) {
+  if (existingNrp) {
     return {
       message: 'NRP already exists',
     };
   }
+  console.log(existingNrp);
 
   const hashPwd = await hashPassword(password);
+  console.log(hashPwd);
 
   const [user] = await db
     .insert(users)
@@ -59,13 +61,23 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
       email,
       nrp,
       password: hashPwd,
-      role: 'employee',
+      createdAt: new Date(),
     })
     .returning();
+
+  console.log(user);
+
+  await db.insert(profiles).values({
+    id: nanoid(),
+    userId: user.id,
+    createdAt: new Date(),
+  });
 
   const sessionToken = generateSessionToken();
   const session = await createSession(sessionToken, user.id);
   setSessionTokenCookie(sessionToken, session.expiresAt);
 
-  return user;
+  const { password: userPassword, ...data } = user;
+
+  return data;
 };

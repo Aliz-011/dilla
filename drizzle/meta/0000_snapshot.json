@@ -1,5 +1,5 @@
 {
-  "id": "7f7985ea-2634-4ec1-9663-2211a3c96578",
+  "id": "9be49178-3ff1-41ee-9fce-de35f2de5db9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -40,9 +40,10 @@
         },
         "status": {
           "name": "status",
-          "type": "varchar",
+          "type": "status",
+          "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "notes": {
           "name": "notes",
@@ -51,7 +52,23 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "attendances_user_id_index": {
+          "name": "attendances_user_id_index",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "attendances_user_id_users_id_fk": {
           "name": "attendances_user_id_users_id_fk",
@@ -97,7 +114,7 @@
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
       "indexes": {},
@@ -135,7 +152,23 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "photos_user_id_index": {
+          "name": "photos_user_id_index",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "photos_user_id_users_id_fk": {
           "name": "photos_user_id_users_id_fk",
@@ -375,7 +408,8 @@
           "type": "role",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "'employee'"
         },
         "created_at": {
           "name": "created_at",
@@ -413,6 +447,16 @@
       "values": [
         "admin",
         "employee"
+      ]
+    },
+    "public.status": {
+      "name": "status",
+      "schema": "public",
+      "values": [
+        "present",
+        "absent",
+        "late",
+        "on_leave"
       ]
     }
   },
